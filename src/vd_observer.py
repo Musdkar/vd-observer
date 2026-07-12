@@ -17,6 +17,7 @@ from typing import Any
 import psutil
 
 
+APP_VERSION = "0.1.0-alpha.1"
 SCHEMA_VERSION = "0.1.0"
 DEFAULT_PROCESSES = (
     "VirtualDesktop.Streamer.exe",
@@ -326,6 +327,7 @@ def run(args: argparse.Namespace) -> int:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Observe VD-related Windows processes.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {APP_VERSION}")
     parser.add_argument(
         "--process",
         action="append",
@@ -349,4 +351,3 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     raise SystemExit(run(parse_args()))
-

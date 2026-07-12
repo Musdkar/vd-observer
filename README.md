@@ -1,11 +1,14 @@
 # VD Observer
 
+[![CI](https://github.com/Musdkar/vd-observer/actions/workflows/ci.yml/badge.svg)](https://github.com/Musdkar/vd-observer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 面向 Virtual Desktop 故障复现的 Windows 本地观测工具。
 
 VD Observer 记录 Virtual Desktop 及相关 VR 运行环境中的进程、资源和网络变化，并将数据保存为结构化日志，方便交给 AI 或技术人员进一步分析。它只负责采集可验证的运行事实，不尝试自动判断故障原因。
 
 > [!IMPORTANT]
-> 当前项目处于早期原型阶段，接口和日志格式仍可能发生变化。本项目是非官方工具，与 Virtual Desktop, Inc. 没有关联。
+> 当前版本为 `0.1.0-alpha.1`，接口和日志格式仍可能发生变化。本项目是非官方工具，与 Virtual Desktop, Inc. 没有关联。
 
 ## 为什么需要它
 
@@ -42,7 +45,7 @@ VD Observer 不会注入或修改 Virtual Desktop 进程，也不会默认代理
 安装依赖：
 
 ```powershell
-python -m pip install psutil
+python -m pip install -r requirements.txt
 ```
 
 ## 快速开始
@@ -89,6 +92,12 @@ python src\vd_observer.py --process VirtualDesktop.Streamer.exe --process vrserv
 --interval SEC    采样间隔，默认 1 秒，最小 0.1 秒
 --duration SEC    采集时长；默认 0，表示持续运行
 --output PATH     会话输出目录，默认 sessions
+```
+
+查看程序版本：
+
+```powershell
+python src\vd_observer.py --version
 ```
 
 ## 会话输出
@@ -157,3 +166,13 @@ sessions/<session-id>/
 - 已检查并脱敏的 VD Observer 会话日志
 
 提交前可参考 [`docs/error-example-template.md`](docs/error-example-template.md)。
+
+运行基础测试：
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+## 许可证
+
+本项目使用 [MIT License](LICENSE)。
