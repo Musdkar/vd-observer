@@ -3,73 +3,75 @@
 [![CI](https://github.com/Musdkar/vd-observer/actions/workflows/ci.yml/badge.svg)](https://github.com/Musdkar/vd-observer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-面向 Virtual Desktop 故障复现的 Windows 本地观测工具。
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-VD Observer 记录 Virtual Desktop 及相关 VR 运行环境中的进程、资源和网络变化，并将数据保存为结构化日志，方便交给 AI 或技术人员进一步分析。它只负责采集可验证的运行事实，不尝试自动判断故障原因。
+A Windows local observation tool for reproducing Virtual Desktop faults.
+
+VD Observer records process, resource, and network changes in the Virtual Desktop and related VR runtime environment, and saves the data as structured logs for further analysis by AI or technical staff. It only collects verifiable runtime facts and does not attempt to automatically determine the cause of faults.
 
 > [!IMPORTANT]
-> 当前版本为 `0.1.0-alpha.1`，接口和日志格式仍可能发生变化。本项目是非官方工具，与 Virtual Desktop, Inc. 没有关联。
+> The current version is `0.1.0-alpha.1`; the interface and log format may still change. This is an unofficial tool and is not affiliated with Virtual Desktop, Inc.
 
-## 为什么需要它
+## Why It's Needed
 
-黑屏、卡顿、断流、无响应和异常退出往往同时涉及 VD、SteamVR、OpenXR、显卡驱动、网络与 Windows 系统环境。相关线索分散在不同位置，而且偶发问题很难事后还原。
+Black screens, stuttering, stream drops, unresponsiveness, and abnormal exits often involve VD, SteamVR, OpenXR, GPU drivers, the network, and the Windows system environment at the same time. Relevant clues are scattered across different locations, and intermittent issues are hard to reconstruct after the fact.
 
-VD Observer 将这些信息放进同一个会话和时间轴，让分析者能够回答：
+VD Observer puts this information into a single session and timeline, allowing analysts to answer:
 
-- 问题发生前后有哪些进程启动、退出或消失？
-- 当时目标进程的 CPU、内存和线程状态如何？
-- 网络连接在什么时间建立、改变或消失？
-- 用户标记的故障时刻与系统事件是否相邻？
-- 日志来自哪个采集器，时间顺序是否可靠？
+- Which processes started, exited, or disappeared around the time of the issue?
+- What were the CPU, memory, and thread states of the target processes at that moment?
+- When were network connections established, changed, or dropped?
+- Are user-marked fault moments adjacent to system events?
+- Which collector do the logs come from, and is the time ordering reliable?
 
-## 当前能力
+## Current Capabilities
 
-- 为每次采集创建独立会话
-- 使用 JSON Lines 保存统一事件流
-- 同时记录 UTC、本地时间和单调时间
-- 发现并跟踪 VD、SteamVR 和 Meta/Oculus 相关进程
-- 周期采集目标进程的 CPU、内存和线程数量
-- 记录目标进程的 TCP/UDP 连接变化
-- 保存 Windows、Python 和网络环境快照
-- 支持在复现过程中添加用户故障标记
-- 生成可供 AI 直接读取的 JSONL、JSON 和 CSV 文件
+- Creates an independent session for each collection run
+- Saves a unified event stream using JSON Lines
+- Records UTC, local time, and monotonic time simultaneously
+- Discovers and tracks VD, SteamVR, and Meta/Oculus related processes
+- Periodically samples CPU, memory, and thread count of target processes
+- Records TCP/UDP connection changes of target processes
+- Saves Windows, Python, and network environment snapshots
+- Supports adding user fault marks during reproduction
+- Generates JSONL, JSON, and CSV files that AI can read directly
 
-VD Observer 不会注入或修改 Virtual Desktop 进程，也不会默认代理、解密或保存网络通信正文。
+VD Observer does not inject into or modify the Virtual Desktop process, nor does it proxy, decrypt, or save network communication content by default.
 
-## 环境要求
+## Requirements
 
-- Windows 10 或 Windows 11
-- Python 3.10 或更高版本
+- Windows 10 or Windows 11
+- Python 3.10 or later
 - [`psutil`](https://pypi.org/project/psutil/)
 
-安装依赖：
+Install dependencies:
 
 ```powershell
 python -m pip install -r requirements.txt
 ```
 
-## 快速开始
+## Quick Start
 
-克隆并进入项目目录：
+Clone and enter the project directory:
 
 ```powershell
 git clone https://github.com/Musdkar/vd-observer.git
 cd vd-observer
 ```
 
-启动采集，按 `Ctrl+C` 停止：
+Start collection, press `Ctrl+C` to stop:
 
 ```powershell
 python src\vd_observer.py
 ```
 
-采集固定时长，例如 60 秒：
+Collect for a fixed duration, e.g. 60 seconds:
 
 ```powershell
 python src\vd_observer.py --duration 60
 ```
 
-默认观察以下进程：
+By default, the following processes are observed:
 
 - `VirtualDesktop.Streamer.exe`
 - `VirtualDesktop.Server.exe`
@@ -77,32 +79,32 @@ python src\vd_observer.py --duration 60
 - `vrmonitor.exe`
 - `OVRServer_x64.exe`
 
-可以重复使用 `--process` 观察自定义进程：
+You can repeat `--process` to observe custom processes:
 
 ```powershell
 python src\vd_observer.py --process VirtualDesktop.Streamer.exe --process vrserver.exe
 ```
 
-运行过程中输入一段文字并按回车，即可在时间线上添加故障标记；输入 `quit` 可提前结束采集。
+During a run, type any text and press Enter to add a fault mark on the timeline; type `quit` to end collection early.
 
-## 命令行参数
+## Command-Line Arguments
 
 ```text
---process NAME     要观察的进程名，可重复指定
---interval SEC    采样间隔，默认 1 秒，最小 0.1 秒
---duration SEC    采集时长；默认 0，表示持续运行
---output PATH     会话输出目录，默认 sessions
+--process NAME     Process name to observe; can be specified multiple times
+--interval SEC     Sampling interval, default 1 second, minimum 0.1 seconds
+--duration SEC     Collection duration; default 0 means run continuously
+--output PATH      Session output directory, default sessions
 ```
 
-查看程序版本：
+Check the program version:
 
 ```powershell
 python src\vd_observer.py --version
 ```
 
-## 会话输出
+## Session Output
 
-每次运行都会创建一个带时间和随机标识的会话目录：
+Each run creates a session directory with a timestamp and a random identifier:
 
 ```text
 sessions/<session-id>/
@@ -112,67 +114,67 @@ sessions/<session-id>/
 `-- metrics.csv
 ```
 
-| 文件 | 内容 |
+| File | Content |
 | --- | --- |
-| `manifest.json` | 会话 ID、格式版本、采集范围、起止时间和结束原因 |
-| `environment.json` | 操作系统、硬件和网络适配器的静态快照 |
-| `events.jsonl` | 进程、网络、会话和用户标记组成的统一事件流 |
-| `metrics.csv` | 目标进程的周期性资源采样数据 |
+| `manifest.json` | Session ID, format version, collection scope, start/end time, and end reason |
+| `environment.json` | Static snapshot of operating system, hardware, and network adapters |
+| `events.jsonl` | Unified event stream composed of process, network, session, and user marks |
+| `metrics.csv` | Periodic resource sampling data for target processes |
 
-`events.jsonl` 中的每一行都是独立 JSON 对象。事件包含会话 ID、数据格式版本、时间戳、单调时间、来源、类别、严重程度和具体数据，便于 AI 按时间窗口筛选与关联。
+Each line in `events.jsonl` is an independent JSON object. Events contain session ID, data format version, timestamp, monotonic time, source, category, severity, and specific data, making it convenient for AI to filter and correlate by time window.
 
-## 隐私与数据安全
+## Privacy & Data Safety
 
-所有日志默认只保存在本地，项目不会自动上传会话数据。`sessions/` 已被 Git 忽略。
+All logs are saved locally by default; the project does not automatically upload session data. `sessions/` is ignored by Git.
 
-运行时日志可能包含以下敏感信息：
+Runtime logs may contain the following sensitive information:
 
-- 主机名
-- 网卡名称、IP、IPv6、MAC 地址和子网掩码
-- 进程可执行文件路径
-- 远端连接地址和端口
-- 用户输入的故障标记
+- Hostname
+- Network adapter names, IP, IPv6, MAC addresses, and subnet masks
+- Process executable file paths
+- Remote connection addresses and ports
+- User-entered fault marks
 
-当前原型尚未提供自动脱敏导出。向 Issue、论坛、云端 AI 或其他第三方提交日志前，请先检查并移除不希望公开的信息。不要提交密码、访问令牌、Wi-Fi 密钥或未经检查的崩溃转储。
+The current prototype does not yet provide automatic redaction export. Before submitting logs to Issues, forums, cloud AI, or any other third party, please review and remove any information you do not want to make public. Do not submit passwords, access tokens, Wi-Fi keys, or unchecked crash dumps.
 
-## 已知限制
+## Known Limitations
 
-- 目前只有命令行采集器，尚无 DevTools 图形界面。
-- 尚未采集 Windows Event Log、ETW、GPU 编码器和 VR Runtime 详细状态。
-- 无法保证默认进程名覆盖所有 VD 或 VR Runtime 版本。
-- 被动网络观察只能看到连接元数据，无法读取加密通信内容。
-- 部分系统或其他用户进程的数据可能因 Windows 权限限制而不可用。
-- 当前版本尚未提供环形缓冲和脱敏导出。
+- Currently only a command-line collector; no DevTools GUI yet.
+- Windows Event Log, ETW, GPU encoder, and detailed VR Runtime state are not yet collected.
+- Cannot guarantee that the default process names cover all VD or VR Runtime versions.
+- Passive network observation can only see connection metadata, not encrypted communication content.
+- Data for some system or other-user processes may be unavailable due to Windows permission restrictions.
+- The current version does not yet provide ring buffering or redaction export.
 
-## 路线图
+## Roadmap
 
-- Windows Event Log 与应用崩溃事件采集
-- GPU、显存、视频编码和网络质量指标
-- SteamVR、OpenXR 与 Meta/Oculus Runtime 状态
-- 可配置的环形缓冲与“保存故障前 N 分钟”
-- 会话浏览、搜索、过滤和时间线界面
-- 可预览、可选择字段的脱敏导出
-- 稳定的事件 Schema 与兼容性测试
+- Windows Event Log and application crash event collection
+- GPU, video memory, video encoding, and network quality metrics
+- SteamVR, OpenXR, and Meta/Oculus Runtime status
+- Configurable ring buffer and "save the N minutes before a fault"
+- Session browsing, search, filtering, and timeline interface
+- Previewable, field-selectable redaction export
+- Stable event schema and compatibility testing
 
-## 反馈与贡献
+## Feedback & Contributing
 
-欢迎通过 GitHub Issues 提交问题、功能建议和经过脱敏的复现信息。有效的故障样例通常包括：
+Contributions via GitHub Issues are welcome for problems, feature suggestions, and redacted reproduction information. An effective fault sample usually includes:
 
-- 用户实际看到的现象
-- 大致发生时间及对应的用户标记
-- 可重复执行的复现步骤
-- VD、Windows、GPU 驱动和头显版本
-- 使用的 OpenXR Runtime 与网络连接方式
-- 已检查并脱敏的 VD Observer 会话日志
+- What the user actually observed
+- Approximate time of occurrence and the corresponding user mark
+- Repeatable reproduction steps
+- Versions of VD, Windows, GPU driver, and headset
+- OpenXR Runtime used and network connection method
+- Reviewed and redacted VD Observer session logs
 
-提交前可参考 [`docs/error-example-template.md`](docs/error-example-template.md)。
+Before submitting, you may refer to [`docs/error-example-template.md`](docs/error-example-template.md).
 
-运行基础测试：
+Run the basic tests:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-## 许可证
+## License
 
-本项目使用 [MIT License](LICENSE)。
+This project is licensed under the [MIT License](LICENSE).
