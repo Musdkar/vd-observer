@@ -175,6 +175,12 @@ Run the basic tests:
 python -m unittest discover -s tests -v
 ```
 
+## Built with Codex and GPT-5.6
+
+Codex, powered by GPT-5.6, was used during Build Week validation and submission preparation. It reviewed the codebase and documentation, set up the local dependency environment, ran the automated test suite, and executed a live collection session to verify the collector's end-to-end outputs.
+
+The validation session confirmed that VD Observer creates a session directory, records process and user-marker events, writes resource metrics, and exports the expected JSONL, JSON, and CSV artifacts. Codex was also used to prepare the project demo materials from those verified outputs.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
