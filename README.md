@@ -7,10 +7,10 @@
 
 A Windows local observation tool for reproducing Virtual Desktop faults.
 
-VD Observer records process, resource, and network changes in the Virtual Desktop and related VR runtime environment, and saves the data as structured logs for further analysis by AI or technical staff. It only collects verifiable runtime facts and does not attempt to automatically determine the cause of faults.
+VD Observer records process, resource, and network changes in the Virtual Desktop and related VR runtime environment, saves the data as structured logs, and produces an evidence-based diagnostic summary for AI, technical staff, and end users.
 
 > [!IMPORTANT]
-> The current version is `0.1.0-alpha.1`; the interface and log format may still change. This is an unofficial tool and is not affiliated with Virtual Desktop, Inc.
+> The current version is `0.2.0-alpha.1`; the interface and log format may still change. This is an unofficial tool and is not affiliated with Virtual Desktop, Inc.
 
 ## Why It's Needed
 
@@ -35,6 +35,9 @@ VD Observer puts this information into a single session and timeline, allowing a
 - Saves Windows, Python, and network environment snapshots
 - Supports adding user fault marks during reproduction
 - Generates JSONL, JSON, and CSV files that AI can read directly
+- Generates automatic `report.txt` and `report.json` diagnostics
+- Classifies VD cloud-registration, headset-session, and partial-port failures
+- Detects common TUN (`198.18.0.0/15`) and loopback-proxy evidence
 
 VD Observer does not inject into or modify the Virtual Desktop process, nor does it proxy, decrypt, or save network communication content by default.
 
@@ -71,6 +74,19 @@ Collect for a fixed duration, e.g. 60 seconds:
 python src\vd_observer.py --duration 60
 ```
 
+Each completed capture prints a human-readable diagnosis and saves it beside the
+raw evidence. Analyze an older session without collecting new data:
+
+```powershell
+python src\vd_observer.py --analyze sessions\<session-id>
+```
+
+Compare a failing capture with a later capture:
+
+```powershell
+python src\vd_observer.py --compare sessions\<before-id> sessions\<after-id>
+```
+
 By default, the following processes are observed:
 
 - `VirtualDesktop.Streamer.exe`
@@ -94,6 +110,8 @@ During a run, type any text and press Enter to add a fault mark on the timeline;
 --interval SEC     Sampling interval, default 1 second, minimum 0.1 seconds
 --duration SEC     Collection duration; default 0 means run continuously
 --output PATH      Session output directory, default sessions
+--analyze PATH     Analyze an existing session instead of collecting
+--compare A B      Compare an earlier session with a later session
 ```
 
 Check the program version:
@@ -111,7 +129,9 @@ sessions/<session-id>/
 |-- manifest.json
 |-- environment.json
 |-- events.jsonl
-`-- metrics.csv
+|-- metrics.csv
+|-- report.json
+`-- report.txt
 ```
 
 | File | Content |
@@ -120,8 +140,25 @@ sessions/<session-id>/
 | `environment.json` | Static snapshot of operating system, hardware, and network adapters |
 | `events.jsonl` | Unified event stream composed of process, network, session, and user marks |
 | `metrics.csv` | Periodic resource sampling data for target processes |
+| `report.txt` | Human-readable status, evidence, and recommended next actions |
+| `report.json` | Machine-readable diagnostic result and extracted signals |
 
 Each line in `events.jsonl` is an independent JSON object. Events contain session ID, data format version, timestamp, monotonic time, source, category, severity, and specific data, making it convenient for AI to filter and correlate by time window.
+
+## Diagnostic Statuses
+
+The diagnostic layer currently reports one of these states:
+
+- `streamer_not_running`
+- `streamer_running_no_cloud_evidence`
+- `cloud_registration_blocked`
+- `cloud_connected_waiting_for_headset`
+- `partial_headset_session`
+- `session_established`
+
+For a complete local session, VD Observer looks for established headset
+connections on ports `38810`, `38820`, `38830`, and `38840`. Diagnostics are
+evidence-based heuristics; raw events remain the source of truth.
 
 ## Privacy & Data Safety
 

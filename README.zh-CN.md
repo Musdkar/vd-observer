@@ -7,10 +7,10 @@
 
 面向 Virtual Desktop 故障复现的 Windows 本地观测工具。
 
-VD Observer 记录 Virtual Desktop 及相关 VR 运行环境中的进程、资源和网络变化，并将数据保存为结构化日志，方便交给 AI 或技术人员进一步分析。它只负责采集可验证的运行事实，不尝试自动判断故障原因。
+VD Observer 记录 Virtual Desktop 及相关 VR 运行环境中的进程、资源和网络变化，将数据保存为结构化日志，并为 AI、技术人员和普通用户生成基于证据的诊断摘要。
 
 > [!IMPORTANT]
-> 当前版本为 `0.1.0-alpha.1`，接口和日志格式仍可能发生变化。本项目是非官方工具，与 Virtual Desktop, Inc. 没有关联。
+> 当前版本为 `0.2.0-alpha.1`，接口和日志格式仍可能发生变化。本项目是非官方工具，与 Virtual Desktop, Inc. 没有关联。
 
 ## 为什么需要它
 
@@ -35,6 +35,9 @@ VD Observer 将这些信息放进同一个会话和时间轴，让分析者能�
 - 保存 Windows、Python 和网络环境快照
 - 支持在复现过程中添加用户故障标记
 - 生成可供 AI 直接读取的 JSONL、JSON 和 CSV 文件
+- 自动生成 `report.txt` 和 `report.json` 诊断报告
+- 区分 VD 云端注册、头显会话和端口不完整等故障阶段
+- 识别常见 TUN（`198.18.0.0/15`）与本机环回代理迹象
 
 VD Observer 不会注入或修改 Virtual Desktop 进程，也不会默认代理、解密或保存网络通信正文。
 
@@ -71,6 +74,18 @@ python src\vd_observer.py
 python src\vd_observer.py --duration 60
 ```
 
+每次采集结束后会显示可读诊断，并把报告保存在原始证据旁边。也可以分析已有会话：
+
+```powershell
+python src\vd_observer.py --analyze sessions\<session-id>
+```
+
+对比一次故障采集和之后的采集：
+
+```powershell
+python src\vd_observer.py --compare sessions\<before-id> sessions\<after-id>
+```
+
 默认观察以下进程：
 
 - `VirtualDesktop.Streamer.exe`
@@ -94,6 +109,8 @@ python src\vd_observer.py --process VirtualDesktop.Streamer.exe --process vrserv
 --interval SEC    采样间隔，默认 1 秒，最小 0.1 秒
 --duration SEC    采集时长；默认 0，表示持续运行
 --output PATH     会话输出目录，默认 sessions
+--analyze PATH    分析已有会话，不进行新采集
+--compare A B     对比早期会话与后续会话
 ```
 
 查看程序版本：
@@ -111,7 +128,9 @@ sessions/<session-id>/
 |-- manifest.json
 |-- environment.json
 |-- events.jsonl
-`-- metrics.csv
+|-- metrics.csv
+|-- report.json
+`-- report.txt
 ```
 
 | 文件 | 内容 |
@@ -120,8 +139,24 @@ sessions/<session-id>/
 | `environment.json` | 操作系统、硬件和网络适配器的静态快照 |
 | `events.jsonl` | 进程、网络、会话和用户标记组成的统一事件流 |
 | `metrics.csv` | 目标进程的周期性资源采样数据 |
+| `report.txt` | 面向用户的状态、证据和下一步建议 |
+| `report.json` | 面向程序的诊断结果和提取信号 |
 
 `events.jsonl` 中的每一行都是独立 JSON 对象。事件包含会话 ID、数据格式版本、时间戳、单调时间、来源、类别、严重程度和具体数据，便于 AI 按时间窗口筛选与关联。
+
+## 诊断状态
+
+当前诊断层会输出以下状态之一：
+
+- `streamer_not_running`
+- `streamer_running_no_cloud_evidence`
+- `cloud_registration_blocked`
+- `cloud_connected_waiting_for_headset`
+- `partial_headset_session`
+- `session_established`
+
+完整本地会话的判断依据是头显在 `38810`、`38820`、`38830` 和 `38840`
+端口上均建立连接。诊断属于基于证据的启发式结论，原始事件仍是最终依据。
 
 ## 隐私与数据安全
 

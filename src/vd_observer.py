@@ -15,10 +15,17 @@ from pathlib import Path
 from typing import Any
 
 import psutil
+from vd_diagnostics import (
+    analyze_session,
+    compare_sessions,
+    render_comparison,
+    render_text_report,
+    write_reports,
+)
 
 
-APP_VERSION = "0.1.0-alpha.1"
-SCHEMA_VERSION = "0.1.0"
+APP_VERSION = "0.2.0-alpha.1"
+SCHEMA_VERSION = "0.2.0"
 DEFAULT_PROCESSES = (
     "VirtualDesktop.Streamer.exe",
     "VirtualDesktop.Server.exe",
@@ -80,6 +87,8 @@ class SessionWriter:
                 "events": "events.jsonl",
                 "metrics": "metrics.csv",
                 "environment": "environment.json",
+                "report_json": "report.json",
+                "report_text": "report.txt",
             },
         }
         write_json(self.directory / "manifest.json", self.manifest)
@@ -196,11 +205,61 @@ def connection_data(connection: Any) -> dict[str, Any]:
     remote = connection.raddr if connection.raddr else None
     return {
         "pid": connection.pid,
-        "transport": str(connection.type),
+        "transport": transport_name(connection.type),
         "status": connection.status,
         "local": {"ip": local.ip, "port": local.port} if local else None,
         "remote": {"ip": remote.ip, "port": remote.port} if remote else None,
     }
+
+
+def transport_name(value: Any) -> str:
+    if value == socket.SOCK_STREAM:
+        return "TCP"
+    if value == socket.SOCK_DGRAM:
+        return "UDP"
+    return str(value)
+
+
+def listener_owners(connections: list[Any]) -> dict[tuple[str, int, str], dict[str, Any]]:
+    owners: dict[tuple[str, int, str], dict[str, Any]] = {}
+    for connection in connections:
+        if not connection.laddr or connection.pid is None:
+            continue
+        transport = transport_name(connection.type)
+        if transport == "TCP" and connection.status != psutil.CONN_LISTEN:
+            continue
+        if transport == "UDP" and connection.raddr:
+            continue
+        try:
+            process = psutil.Process(connection.pid)
+            owner = {"pid": connection.pid, "name": process.name()}
+            try:
+                owner["executable"] = process.exe()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+        owners[(connection.laddr.ip, connection.laddr.port, transport)] = owner
+    return owners
+
+
+def enrich_connection(
+    connection: Any,
+    owners: dict[tuple[str, int, str], dict[str, Any]],
+) -> dict[str, Any]:
+    data = connection_data(connection)
+    remote = data.get("remote")
+    if remote:
+        keys = (
+            (remote["ip"], remote["port"], data["transport"]),
+            ("0.0.0.0", remote["port"], data["transport"]),
+            ("::", remote["port"], data["transport"]),
+        )
+        for key in keys:
+            if key in owners:
+                data["peer_process"] = owners[key]
+                break
+    return data
 
 
 def input_worker(messages: queue.Queue[str], stop: threading.Event) -> None:
@@ -233,6 +292,7 @@ def run(args: argparse.Namespace) -> int:
     threading.Thread(target=input_worker, args=(messages, stop), daemon=True).start()
     known_processes: dict[int, psutil.Process] = {}
     known_connections: set[tuple[Any, ...]] = set()
+    initial_process_sample = True
     deadline = time.monotonic() + args.duration if args.duration > 0 else None
     reason = "duration_elapsed"
 
@@ -266,7 +326,11 @@ def run(args: argparse.Namespace) -> int:
                         }
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         continue
-                    writer.event("process-monitor", "process", "process_started", data)
+                    event_name = (
+                        "process_observed" if initial_process_sample else "process_started"
+                    )
+                    data["observed_at_session_start"] = initial_process_sample
+                    writer.event("process-monitor", "process", event_name, data)
                     process.cpu_percent(None)
 
                 writer.metric(process)
@@ -283,7 +347,9 @@ def run(args: argparse.Namespace) -> int:
 
             current_connections: set[tuple[Any, ...]] = set()
             try:
-                for connection in psutil.net_connections(kind="inet"):
+                all_connections = psutil.net_connections(kind="inet")
+                owners = listener_owners(all_connections)
+                for connection in all_connections:
                     if connection.pid not in current:
                         continue
                     key = connection_key(connection)
@@ -293,7 +359,7 @@ def run(args: argparse.Namespace) -> int:
                             "network-monitor",
                             "network",
                             "connection_observed",
-                            connection_data(connection),
+                            enrich_connection(connection, owners),
                         )
             except psutil.AccessDenied:
                 writer.event(
@@ -314,6 +380,7 @@ def run(args: argparse.Namespace) -> int:
 
             known_processes = current
             known_connections = current_connections
+            initial_process_sample = False
             time.sleep(args.interval)
     except KeyboardInterrupt:
         reason = "keyboard_interrupt"
@@ -321,7 +388,11 @@ def run(args: argparse.Namespace) -> int:
         stop.set()
         writer.event("vd-observer", "session", "session_ended", {"reason": reason})
         writer.close(reason)
+        report = analyze_session(writer.directory)
+        write_reports(writer.directory, report)
         print(f"Saved: {writer.directory.resolve()}")
+        print()
+        print(render_text_report(report))
     return 0
 
 
@@ -341,13 +412,36 @@ def parse_args() -> argparse.Namespace:
         help="Seconds to capture; zero runs until stopped.",
     )
     parser.add_argument("--output", default="sessions")
+    parser.add_argument(
+        "--analyze",
+        type=Path,
+        help="Analyze an existing session directory instead of collecting.",
+    )
+    parser.add_argument(
+        "--compare",
+        nargs=2,
+        type=Path,
+        metavar=("BEFORE", "AFTER"),
+        help="Compare two existing session directories.",
+    )
     args = parser.parse_args()
     if args.interval < 0.1:
         parser.error("--interval must be at least 0.1 seconds")
     if args.duration < 0:
         parser.error("--duration cannot be negative")
+    if args.analyze and args.compare:
+        parser.error("--analyze and --compare cannot be used together")
     return args
 
 
 if __name__ == "__main__":
-    raise SystemExit(run(parse_args()))
+    arguments = parse_args()
+    if arguments.analyze:
+        diagnostic = analyze_session(arguments.analyze)
+        write_reports(arguments.analyze, diagnostic)
+        print(render_text_report(diagnostic))
+        raise SystemExit(0)
+    if arguments.compare:
+        print(render_comparison(compare_sessions(*arguments.compare)))
+        raise SystemExit(0)
+    raise SystemExit(run(arguments))

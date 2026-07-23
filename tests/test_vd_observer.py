@@ -12,6 +12,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 import vd_observer  # noqa: E402
+from vd_diagnostics import (  # noqa: E402
+    analyze_events,
+    compare_reports,
+    render_comparison,
+    render_text_report,
+)
 
 
 class SessionWriterTests(unittest.TestCase):
@@ -52,7 +58,172 @@ class SessionWriterTests(unittest.TestCase):
 
 class ArgumentTests(unittest.TestCase):
     def test_version_is_alpha_release(self) -> None:
-        self.assertEqual(vd_observer.APP_VERSION, "0.1.0-alpha.1")
+        self.assertEqual(vd_observer.APP_VERSION, "0.2.0-alpha.1")
+
+
+def process_event(name: str, event: str = "process_observed") -> dict:
+    return {
+        "category": "process",
+        "event": event,
+        "data": {"name": name},
+    }
+
+
+def connection_event(
+    local_ip: str,
+    local_port: int,
+    remote_ip: str,
+    remote_port: int,
+    status: str,
+    **extra: object,
+) -> dict:
+    data = {
+        "transport": "TCP",
+        "status": status,
+        "local": {"ip": local_ip, "port": local_port},
+        "remote": {"ip": remote_ip, "port": remote_port},
+    }
+    data.update(extra)
+    return {"category": "network", "event": "connection_observed", "data": data}
+
+
+class DiagnosticTests(unittest.TestCase):
+    def test_diagnoses_cloud_registration_blocked_by_tun(self) -> None:
+        events = [
+            process_event("VirtualDesktop.Streamer.exe"),
+            connection_event(
+                "127.0.0.1",
+                51103,
+                "127.0.0.1",
+                1080,
+                "ESTABLISHED",
+                peer_process={"pid": 4242, "name": "ExampleProxyCore.exe"},
+            ),
+            connection_event(
+                "198.18.0.1",
+                38810,
+                "93.184.216.34",
+                38811,
+                "SYN_SENT",
+            ),
+        ]
+        environment = {
+            "network_adapters": {
+                "Example TUN": {
+                    "addresses": [{"address": "198.18.0.1"}],
+                }
+            }
+        }
+
+        report = analyze_events(events, environment)
+
+        self.assertEqual(report["status"], "cloud_registration_blocked")
+        self.assertFalse(report["success"])
+        self.assertEqual(report["signals"]["cloud_syn_sent_count"], 1)
+        self.assertEqual(report["signals"]["tun_adapter_names"], ["Example TUN"])
+        messages = " ".join(item["message"] for item in report["findings"])
+        self.assertIn("ExampleProxyCore.exe", messages)
+
+    def test_diagnoses_cloud_connected_but_no_headset_session(self) -> None:
+        events = [
+            process_event("VirtualDesktop.Streamer.exe"),
+            connection_event(
+                "198.18.0.1",
+                38810,
+                "93.184.216.34",
+                38814,
+                "ESTABLISHED",
+            ),
+        ]
+
+        report = analyze_events(events)
+
+        self.assertEqual(report["status"], "cloud_connected_waiting_for_headset")
+        self.assertEqual(report["signals"]["connected_session_ports"], [])
+
+    def test_diagnoses_complete_local_session(self) -> None:
+        events = [
+            process_event("VirtualDesktop.Streamer.exe"),
+            process_event("VirtualDesktop.Server.exe", "process_started"),
+        ]
+        for index, port in enumerate(sorted({38810, 38820, 38830, 38840})):
+            events.append(
+                connection_event(
+                    "10.20.30.10",
+                    port,
+                    "10.20.30.42",
+                    35000 + index,
+                    "ESTABLISHED",
+                )
+            )
+
+        report = analyze_events(events)
+        text_report = render_text_report(report)
+
+        self.assertEqual(report["status"], "session_established")
+        self.assertTrue(report["success"])
+        self.assertEqual(
+            report["signals"]["connected_session_ports"],
+            [38810, 38820, 38830, 38840],
+        )
+        self.assertEqual(report["signals"]["headset_ips"], ["10.20.30.42"])
+        self.assertIn("No action required.", text_report)
+
+    def test_diagnoses_partial_headset_session(self) -> None:
+        events = [
+            process_event("VirtualDesktop.Streamer.exe"),
+            connection_event(
+                "10.20.30.10",
+                38810,
+                "10.20.30.42",
+                35000,
+                "ESTABLISHED",
+            ),
+        ]
+
+        report = analyze_events(events)
+
+        self.assertEqual(report["status"], "partial_headset_session")
+        self.assertEqual(
+            report["signals"]["missing_session_ports"],
+            [38820, 38830, 38840],
+        )
+
+    def test_compares_blocked_and_successful_sessions_as_resolved(self) -> None:
+        before = analyze_events(
+            [
+                process_event("VirtualDesktop.Streamer.exe"),
+                connection_event(
+                    "198.18.0.1",
+                    38810,
+                    "93.184.216.34",
+                    38811,
+                    "SYN_SENT",
+                ),
+            ]
+        )
+        success_events = [
+            process_event("VirtualDesktop.Streamer.exe"),
+            process_event("VirtualDesktop.Server.exe", "process_started"),
+        ]
+        for index, port in enumerate(sorted({38810, 38820, 38830, 38840})):
+            success_events.append(
+                connection_event(
+                    "10.20.30.10",
+                    port,
+                    "10.20.30.42",
+                    35000 + index,
+                    "ESTABLISHED",
+                )
+            )
+        after = analyze_events(success_events)
+
+        comparison = compare_reports(before, after)
+
+        self.assertEqual(comparison["result"], "resolved")
+        self.assertEqual(comparison["before_status"], "cloud_registration_blocked")
+        self.assertEqual(comparison["after_status"], "session_established")
+        self.assertIn("38840", render_comparison(comparison))
 
 
 if __name__ == "__main__":
