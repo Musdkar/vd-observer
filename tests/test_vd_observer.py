@@ -57,6 +57,10 @@ class SessionWriterTests(unittest.TestCase):
 
 
 class ArgumentTests(unittest.TestCase):
+    def test_project_name_includes_log_keyword(self) -> None:
+        self.assertEqual(vd_observer.APP_NAME, "vd-log-observer")
+        self.assertEqual(vd_observer.APP_DISPLAY_NAME, "VD Log Observer")
+
     def test_version_is_alpha_release(self) -> None:
         self.assertEqual(vd_observer.APP_VERSION, "0.2.0-alpha.1")
 
@@ -168,6 +172,7 @@ class DiagnosticTests(unittest.TestCase):
         )
         self.assertEqual(report["signals"]["headset_ips"], ["10.20.30.42"])
         self.assertIn("No action required.", text_report)
+        self.assertIn("VD Log Observer Diagnostic Report", text_report)
 
     def test_diagnoses_partial_headset_session(self) -> None:
         events = [

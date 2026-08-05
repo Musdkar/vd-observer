@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
+PROJECT_DISPLAY_NAME = "VD Log Observer"
 VD_SESSION_PORTS = {38810, 38820, 38830, 38840}
 STREAMER_PROCESS = "virtualdesktop.streamer.exe"
 SERVER_PROCESS = "virtualdesktop.server.exe"
@@ -284,7 +285,7 @@ def analyze_session(directory: Path) -> dict[str, Any]:
 
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
-        "VD Observer Diagnostic Report",
+        f"{PROJECT_DISPLAY_NAME} Diagnostic Report",
         "=============================",
         f"Status:  {report['status']}",
         f"Result:  {'success' if report['success'] else 'attention needed'}",
@@ -387,7 +388,7 @@ def render_comparison(comparison: dict[str, Any]) -> str:
     changes = comparison["changes"]
     return "\n".join(
         [
-            "VD Observer Session Comparison",
+            f"{PROJECT_DISPLAY_NAME} Session Comparison",
             "==============================",
             f"Result: {comparison['result']}",
             f"Before: {comparison['before_status']}",

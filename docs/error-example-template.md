@@ -7,7 +7,7 @@
 ## 故障发生时间
 
 - 大致时间：
-- 是否按下了 VD Observer 故障标记：是 / 否
+- 是否按下了 VD Log Observer 故障标记：是 / 否
 - 对应会话 ID：
 
 ## 复现步骤
@@ -36,7 +36,7 @@
 
 ## 可提供的材料
 
-- VD Observer 会话目录
+- VD Log Observer 会话目录
 - 截图或录屏
 - VD、SteamVR 或 Windows 已有日志
 

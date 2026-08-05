@@ -1,13 +1,13 @@
-# VD Observer
+# VD Log Observer
 
-[![CI](https://github.com/Musdkar/vd-observer/actions/workflows/ci.yml/badge.svg)](https://github.com/Musdkar/vd-observer/actions/workflows/ci.yml)
+[![CI](https://github.com/Musdkar/vd-log-observer/actions/workflows/ci.yml/badge.svg)](https://github.com/Musdkar/vd-log-observer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-A Windows local observation tool for reproducing Virtual Desktop faults.
+A Windows local **Virtual Desktop (VD) log collector and diagnostic tool** for reproducing VR streaming and connection faults.
 
-VD Observer records process, resource, and network changes in the Virtual Desktop and related VR runtime environment, saves the data as structured logs, and produces an evidence-based diagnostic summary for AI, technical staff, and end users.
+VD Log Observer collects Virtual Desktop logs by recording process, resource, and network changes in the Virtual Desktop and related VR runtime environment. It saves structured VD logs and produces an evidence-based diagnostic summary for AI, technical staff, and end users.
 
 > [!IMPORTANT]
 > The current version is `0.2.0-alpha.1`; the interface and log format may still change. This is an unofficial tool and is not affiliated with Virtual Desktop, Inc.
@@ -16,7 +16,7 @@ VD Observer records process, resource, and network changes in the Virtual Deskto
 
 Black screens, stuttering, stream drops, unresponsiveness, and abnormal exits often involve VD, SteamVR, OpenXR, GPU drivers, the network, and the Windows system environment at the same time. Relevant clues are scattered across different locations, and intermittent issues are hard to reconstruct after the fact.
 
-VD Observer puts this information into a single session and timeline, allowing analysts to answer:
+VD Log Observer puts this information into a single session and timeline, allowing analysts to answer:
 
 - Which processes started, exited, or disappeared around the time of the issue?
 - What were the CPU, memory, and thread states of the target processes at that moment?
@@ -39,7 +39,7 @@ VD Observer puts this information into a single session and timeline, allowing a
 - Classifies VD cloud-registration, headset-session, and partial-port failures
 - Detects common TUN (`198.18.0.0/15`) and loopback-proxy evidence
 
-VD Observer does not inject into or modify the Virtual Desktop process, nor does it proxy, decrypt, or save network communication content by default.
+VD Log Observer does not inject into or modify the Virtual Desktop process, nor does it proxy, decrypt, or save network communication content by default.
 
 ## Requirements
 
@@ -58,8 +58,8 @@ python -m pip install -r requirements.txt
 Clone and enter the project directory:
 
 ```powershell
-git clone https://github.com/Musdkar/vd-observer.git
-cd vd-observer
+git clone https://github.com/Musdkar/vd-log-observer.git
+cd vd-log-observer
 ```
 
 Start collection, press `Ctrl+C` to stop:
@@ -156,7 +156,7 @@ The diagnostic layer currently reports one of these states:
 - `partial_headset_session`
 - `session_established`
 
-For a complete local session, VD Observer looks for established headset
+For a complete local session, VD Log Observer looks for established headset
 connections on ports `38810`, `38820`, `38830`, and `38840`. Diagnostics are
 evidence-based heuristics; raw events remain the source of truth.
 
@@ -202,7 +202,7 @@ Contributions via GitHub Issues are welcome for problems, feature suggestions, a
 - Repeatable reproduction steps
 - Versions of VD, Windows, GPU driver, and headset
 - OpenXR Runtime used and network connection method
-- Reviewed and redacted VD Observer session logs
+- Reviewed and redacted VD Log Observer session logs
 
 Before submitting, you may refer to [`docs/error-example-template.md`](docs/error-example-template.md).
 

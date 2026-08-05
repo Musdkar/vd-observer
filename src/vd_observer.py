@@ -25,6 +25,8 @@ from vd_diagnostics import (
 
 
 APP_VERSION = "0.2.0-alpha.1"
+APP_NAME = "vd-log-observer"
+APP_DISPLAY_NAME = "VD Log Observer"
 SCHEMA_VERSION = "0.2.0"
 DEFAULT_PROCESSES = (
     "VirtualDesktop.Streamer.exe",
@@ -278,7 +280,7 @@ def run(args: argparse.Namespace) -> int:
     writer = SessionWriter(Path(args.output), watched, args.interval)
     write_json(writer.directory / "environment.json", environment_snapshot())
     writer.event(
-        "vd-observer",
+        APP_NAME,
         "session",
         "session_started",
         {"watched_process_names": sorted(watched)},
@@ -386,7 +388,7 @@ def run(args: argparse.Namespace) -> int:
         reason = "keyboard_interrupt"
     finally:
         stop.set()
-        writer.event("vd-observer", "session", "session_ended", {"reason": reason})
+        writer.event(APP_NAME, "session", "session_ended", {"reason": reason})
         writer.close(reason)
         report = analyze_session(writer.directory)
         write_reports(writer.directory, report)
@@ -397,7 +399,10 @@ def run(args: argparse.Namespace) -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Observe VD-related Windows processes.")
+    parser = argparse.ArgumentParser(
+        prog=APP_NAME,
+        description=f"{APP_DISPLAY_NAME}: collect and analyze Virtual Desktop (VD) logs.",
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {APP_VERSION}")
     parser.add_argument(
         "--process",

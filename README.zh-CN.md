@@ -1,13 +1,13 @@
-# VD Observer
+# VD Log Observer
 
-[![CI](https://github.com/Musdkar/vd-observer/actions/workflows/ci.yml/badge.svg)](https://github.com/Musdkar/vd-observer/actions/workflows/ci.yml)
+[![CI](https://github.com/Musdkar/vd-log-observer/actions/workflows/ci.yml/badge.svg)](https://github.com/Musdkar/vd-log-observer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-面向 Virtual Desktop 故障复现的 Windows 本地观测工具。
+面向 Virtual Desktop 故障复现的 Windows 本地日志采集与诊断工具。
 
-VD Observer 记录 Virtual Desktop 及相关 VR 运行环境中的进程、资源和网络变化，将数据保存为结构化日志，并为 AI、技术人员和普通用户生成基于证据的诊断摘要。
+VD Log Observer 通过记录 Virtual Desktop 及相关 VR 运行环境中的进程、资源和网络变化来采集 VD 日志，将数据保存为结构化日志，并为 AI、技术人员和普通用户生成基于证据的诊断摘要。
 
 > [!IMPORTANT]
 > 当前版本为 `0.2.0-alpha.1`，接口和日志格式仍可能发生变化。本项目是非官方工具，与 Virtual Desktop, Inc. 没有关联。
@@ -16,7 +16,7 @@ VD Observer 记录 Virtual Desktop 及相关 VR 运行环境中的进程、资�
 
 黑屏、卡顿、断流、无响应和异常退出往往同时涉及 VD、SteamVR、OpenXR、显卡驱动、网络与 Windows 系统环境。相关线索分散在不同位置，而且偶发问题很难事后还原。
 
-VD Observer 将这些信息放进同一个会话和时间轴，让分析者能够回答：
+VD Log Observer 将这些信息放进同一个会话和时间轴，让分析者能够回答：
 
 - 问题发生前后有哪些进程启动、退出或消失？
 - 当时目标进程的 CPU、内存和线程状态如何？
@@ -39,7 +39,7 @@ VD Observer 将这些信息放进同一个会话和时间轴，让分析者能�
 - 区分 VD 云端注册、头显会话和端口不完整等故障阶段
 - 识别常见 TUN（`198.18.0.0/15`）与本机环回代理迹象
 
-VD Observer 不会注入或修改 Virtual Desktop 进程，也不会默认代理、解密或保存网络通信正文。
+VD Log Observer 不会注入或修改 Virtual Desktop 进程，也不会默认代理、解密或保存网络通信正文。
 
 ## 环境要求
 
@@ -58,8 +58,8 @@ python -m pip install -r requirements.txt
 克隆并进入项目目录：
 
 ```powershell
-git clone https://github.com/Musdkar/vd-observer.git
-cd vd-observer
+git clone https://github.com/Musdkar/vd-log-observer.git
+cd vd-log-observer
 ```
 
 启动采集，按 `Ctrl+C` 停止：
@@ -200,7 +200,7 @@ sessions/<session-id>/
 - 可重复执行的复现步骤
 - VD、Windows、GPU 驱动和头显版本
 - 使用的 OpenXR Runtime 与网络连接方式
-- 已检查并脱敏的 VD Observer 会话日志
+- 已检查并脱敏的 VD Log Observer 会话日志
 
 提交前可参考 [`docs/error-example-template.md`](docs/error-example-template.md)。
 
